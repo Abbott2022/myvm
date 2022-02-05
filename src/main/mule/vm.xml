@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="73f11d2b-410f-43fa-9be3-ba88ef18cb90" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="8043803f-0bdb-460d-bc1c-edd752e9fd11" >
+		<vm:queues >
+			<vm:queue queueName="vmqueue" />
+		</vm:queues>
+	</vm:config>
+	<flow name="vmFlow" doc:id="012e3ed7-8161-460e-8608-a8a41fb9bc11" >
+		<http:listener doc:name="Listener" doc:id="a18d3ca1-3157-49ca-acbc-30f4a52b73aa" config-ref="HTTP_Listener_config" path="/myvm"/>
+		<logger level="INFO" doc:name="Logger" doc:id="7029f6bf-5a78-40de-89e1-4dfc4ef16b31" message="vm flow started..."/>
+		<set-variable value="#[attributes.queryParams.name]" doc:name="Set Variable" doc:id="aa37897d-bb70-4a4c-b157-013bf82c6d62" variableName="name"/>
+		<ee:transform doc:name="Transform Message" doc:id="976bac5d-ae66-47d3-883d-463262ef13bf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	name: vars.name
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="f4c59150-44ff-4968-b157-69695073283a" message="before vm:#[payload]"/>
+		<vm:publish-consume queueName="vmqueue" doc:name="Publish consume" doc:id="5a46ae1f-54ce-49ea-8165-57549a8b0ed5" config-ref="VM_Config" timeoutUnit="MINUTES"/>
+	</flow>
+	<flow name="vmFlow1" doc:id="d57529ac-d8d3-47d2-87f1-ccc980253dd3" >
+		<vm:listener queueName="vmqueue" doc:name="Listener" doc:id="926e2cee-50ec-4d52-9f1b-edcd40b52e6c" config-ref="VM_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="bc23b925-6ed1-4495-b81b-df1605ec8630" message="after vm:#[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="c6abfffe-164f-4af0-a8aa-519fafd49634" message="after vm:variable:#[vars.name]"/>
+		<ee:transform doc:name="Transform Message" doc:id="e9af37c6-21c6-4784-9064-47c7f2f064d6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	position: "developer",
+	data : payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="2717cf32-7f42-4a65-a9c1-b9d539fc1f9d" message="final payload:[payload]"/>
+	</flow>
+</mule>
